@@ -6,13 +6,21 @@ from typing import List
 from cassandra.cluster import Cluster
 
 
-table_drop = "DROP TABLE events"
+table_drop = "DROP IF EXISTS TABLE events"
 
 table_create = """
     CREATE TABLE IF NOT EXISTS events
     (
         id text,
-        type text,
+        type text, 
+        actor_id text, 
+        actor_login text, 
+        actor_display_login text, 
+        actor_url text, 
+        repo_id text, 
+        repo_name text, 
+        repo_url text, 
+        created_at timestamp,
         public boolean,
         PRIMARY KEY (
             id,
@@ -70,9 +78,38 @@ def process(session, filepath):
             data = json.loads(f.read())
             for each in data:
                 # Print some sample data
-                print(each["id"], each["type"], each["actor"]["login"])
+                # print(each["id"], each["type"], each["actor"]["login"], each["public"])
 
                 # Insert data into tables here
+                query = f"""
+                    INSERT INTO events (
+                        id, 
+                        type, 
+                        actor_id, 
+                        actor_login, 
+                        actor_display_login, 
+                        actor_url, 
+                        repo_id, 
+                        repo_name, 
+                        repo_url, 
+                        created_at,
+                        public
+                    )
+                    VALUES (
+                        '{each["id"]}', 
+                        '{each["type"]}',
+                        '{each["actor"]["id"]}',
+                        '{each["actor"]["login"]}',
+                        '{each["actor"]["display_login"]}',
+                        '{each["actor"]["url"]}',
+                        '{each["repo"]["id"]}',
+                        '{each["repo"]["name"]}',
+                        '{each["repo"]["url"]}',
+                        '{each["created_at"]}',
+                        {each["public"]}
+                    )
+                """
+                session.execute(query)
 
 
 def insert_sample_data(session):
@@ -80,7 +117,6 @@ def insert_sample_data(session):
     INSERT INTO events (id, type, public) VALUES ('23487929637', 'IssueCommentEvent', true)
     """
     session.execute(query)
-
 
 def main():
     cluster = Cluster(['127.0.0.1'])
@@ -106,12 +142,12 @@ def main():
     drop_tables(session)
     create_tables(session)
 
-    # process(session, filepath="../data")
-    insert_sample_data(session)
+    process(session, filepath="../data")
+    # insert_sample_data(session)
 
     # Select data in Cassandra and print them to stdout
     query = """
-    SELECT * from events WHERE id = '23487929637' AND type = 'IssueCommentEvent'
+        SELECT * from events
     """
     try:
         rows = session.execute(query)
@@ -120,7 +156,6 @@ def main():
 
     for row in rows:
         print(row)
-
 
 if __name__ == "__main__":
     main()

@@ -29,20 +29,20 @@ def main(dataset_id, table_id, file_path):
     # โค้ดส่วนนี้จะเป็นการใช้ Keyfile เพื่อสร้าง Credentials เอาไว้เชื่อมต่อกับ BigQuery
     # โดยการสร้าง Keyfile สามารถดูได้จากลิ้งค์ About Google Cloud Platform (GCP)
     # ที่หัวข้อ How to Create Service Account
-    #
+
     # การจะใช้ Keyfile ได้ เราต้องกำหนด File Path ก่อน ซึ่งวิธีกำหนด File Path เราสามารถ
     # ทำได้โดยการเซตค่า Environement Variable ที่ชื่อ KEYFILE_PATH ได้ จะทำให้เวลาที่เราปรับ
     # เปลี่ยน File Path เราจะได้ไม่ต้องกลับมาแก้โค้ด
     # keyfile = os.environ.get("KEYFILE_PATH")
-    #
+
     # แต่เพื่อความง่ายเราสามารถกำหนด File Path ไปได้เลยตรง ๆ
-    keyfile = "sou-ds525-load-data-to-bigquer.json"
+    keyfile = "../credentials/dw-and-bi-project-load-data-to-bigquery.json"
     service_account_info = json.load(open(keyfile))
     credentials = service_account.Credentials.from_service_account_info(service_account_info)
 
     # โค้ดส่วนนี้จะเป็นการสร้าง Client เชื่อมต่อไปยังโปรเจค GCP ของเรา โดยใช้ Credentials ที่
     # สร้างจากโค้ดข้างต้น
-    project_id = "dw-and-bi"
+    project_id = "data-warehouse-and-bi"
     client = bigquery.Client(
         project=project_id,
         credentials=credentials,
@@ -50,19 +50,42 @@ def main(dataset_id, table_id, file_path):
 
     # โค้ดส่วนนี้เป็นการ Configure Job ที่เราจะส่งไปทำงานที่ BigQuery โดยหลัก ๆ เราก็จะกำหนดว่า
     # ไฟล์ที่เราจะโหลดขึ้นไปมีฟอร์แมตอะไร มี Schema หน้าตาประมาณไหน
-    job_config = bigquery.LoadJobConfig(
-        skip_leading_rows=1,
-        write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
-        source_format=bigquery.SourceFormat.CSV,
-        schema=[
-            bigquery.SchemaField("id", bigquery.SqlTypeNames.STRING),
-            bigquery.SchemaField("type", bigquery.SqlTypeNames.STRING),
-            bigquery.SchemaField("actor", bigquery.SqlTypeNames.STRING),
-            bigquery.SchemaField("repo", bigquery.SqlTypeNames.STRING),
-            bigquery.SchemaField("create_at", bigquery.SqlTypeNames.STRING),
-            bigquery.SchemaField("payload", bigquery.SqlTypeNames.STRING),
-        ],
-    )
+    if table_id == "events":
+        job_config = bigquery.LoadJobConfig(
+            skip_leading_rows=1,
+            write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+            source_format=bigquery.SourceFormat.CSV,
+            schema=[
+                bigquery.SchemaField("event_id", bigquery.SqlTypeNames.STRING),
+                bigquery.SchemaField("event_type", bigquery.SqlTypeNames.STRING),
+                bigquery.SchemaField("actor_id", bigquery.SqlTypeNames.STRING),
+                bigquery.SchemaField("created_at", bigquery.SqlTypeNames.TIMESTAMP),
+                bigquery.SchemaField("repo_id", bigquery.SqlTypeNames.STRING)
+            ],
+        )
+    elif table_id == "repos":
+        job_config = bigquery.LoadJobConfig(
+            skip_leading_rows=1,
+            write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+            source_format=bigquery.SourceFormat.CSV,
+            schema=[
+                bigquery.SchemaField("repo_id", bigquery.SqlTypeNames.STRING),
+                bigquery.SchemaField("repo_name", bigquery.SqlTypeNames.STRING),
+                bigquery.SchemaField("repo_url", bigquery.SqlTypeNames.STRING)
+            ],
+        )
+    else:
+        job_config = bigquery.LoadJobConfig(
+            skip_leading_rows=1,
+            write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+            source_format=bigquery.SourceFormat.CSV,
+            schema=[
+                bigquery.SchemaField("actor_id", bigquery.SqlTypeNames.STRING),
+                bigquery.SchemaField("actor_login", bigquery.SqlTypeNames.STRING),
+                bigquery.SchemaField("actor_display_login", bigquery.SqlTypeNames.STRING),
+                bigquery.SchemaField("actor_url", bigquery.SqlTypeNames.STRING)
+            ],
+        )
 
     # โค้ดส่วนนี้จะเป็นการอ่านไฟล์ CSV และโหลดขึ้นไปยัง BigQuery
     with open(file_path, "rb") as f:
@@ -82,18 +105,62 @@ if __name__ == "__main__":
 
     with open("github_events.csv", "w") as csv_file:
         writer = csv.writer(csv_file)
-
+        writer.writerow([
+            "event_id", 
+            "event_type", 
+            "actor_id",
+            "created_at",
+            "repo_id"
+        ])
         for datafile in all_files:
             with open(datafile, "r") as f:
                 data = json.loads(f.read())
                 for each in data:
                     writer.writerow([
                         each["id"], 
-                        each["type"],
-                        each["actor"]["id"],
-                        each["repo"]["id"],
-                        each["created_at"],
-                        each["payload"],
+                        each["type"], 
+                        each["actor"]["id"], 
+                        each["created_at"], 
+                        each["repo"]["id"]
                         ])
 
-    main(dataset_id= "dw-and-bi", table_id= "events", file_path= "github_events.csv")
+    with open("github_repos.csv", "w") as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow([
+            "repo_id", 
+            "repo_name", 
+            "repo_url"
+        ])
+        for datafile in all_files:
+            with open(datafile, "r") as f:
+                data = json.loads(f.read())
+                for each in data:
+                    writer.writerow([
+                        each["repo"]["id"], 
+                        each["repo"]["name"], 
+                        each["repo"]["url"]
+                        ])
+
+
+    with open("github_actors.csv", "w") as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow([
+            "actor_id", 
+            "actor_login", 
+            "actor_display_login",
+            "actor_url"
+        ])
+        for datafile in all_files:
+            with open(datafile, "r") as f:
+                data = json.loads(f.read())
+                for each in data:
+                    writer.writerow([
+                        each["actor"]["id"], 
+                        each["actor"]["login"], 
+                        each["actor"]["display_login"], 
+                        each["actor"]["url"]
+                        ])
+
+    main(dataset_id="dw-and-bi", table_id="events", file_path="github_events.csv")
+    main(dataset_id="dw-and-bi", table_id="repos", file_path="github_repos.csv")
+    main(dataset_id="dw-and-bi", table_id="actors", file_path="github_actors.csv")

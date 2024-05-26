@@ -36,7 +36,7 @@ def main(dataset_id, table_id, file_path):
     # keyfile = os.environ.get("KEYFILE_PATH")
 
     # แต่เพื่อความง่ายเราสามารถกำหนด File Path ไปได้เลยตรง ๆ
-    keyfile = "../credentials/dw-and-bi-project-load-data-to-bigquery.json"
+    keyfile = "../credentials/dw-and-bi-admin@data-warehouse-and-bi.json"
     service_account_info = json.load(open(keyfile))
     credentials = service_account.Credentials.from_service_account_info(service_account_info)
 
@@ -50,10 +50,11 @@ def main(dataset_id, table_id, file_path):
 
     # โค้ดส่วนนี้เป็นการ Configure Job ที่เราจะส่งไปทำงานที่ BigQuery โดยหลัก ๆ เราก็จะกำหนดว่า
     # ไฟล์ที่เราจะโหลดขึ้นไปมีฟอร์แมตอะไร มี Schema หน้าตาประมาณไหน
+    # ส่งให้ BigQuery ทำงาน
     if table_id == "events":
         job_config = bigquery.LoadJobConfig(
             skip_leading_rows=1,
-            write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+            write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE, # Truncate คือลบของเก่าทิ้งแล้วเขียนทับ
             source_format=bigquery.SourceFormat.CSV,
             schema=[
                 bigquery.SchemaField("event_id", bigquery.SqlTypeNames.STRING),
@@ -161,6 +162,6 @@ if __name__ == "__main__":
                         each["actor"]["url"]
                         ])
 
-    main(dataset_id="dw-and-bi", table_id="events", file_path="github_events.csv")
-    main(dataset_id="dw-and-bi", table_id="repos", file_path="github_repos.csv")
-    main(dataset_id="dw-and-bi", table_id="actors", file_path="github_actors.csv")
+    main(dataset_id="dw_and_bi", table_id="events", file_path="github_events.csv")
+    main(dataset_id="dw_and_bi", table_id="repos", file_path="github_repos.csv")
+    main(dataset_id="dw_and_bi", table_id="actors", file_path="github_actors.csv")

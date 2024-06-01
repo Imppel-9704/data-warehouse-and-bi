@@ -1,0 +1,7 @@
+# Work
+output_csv/
+output_parquet/
+.ipynb_checkpoints/
+actors/
+events/
+repos/
